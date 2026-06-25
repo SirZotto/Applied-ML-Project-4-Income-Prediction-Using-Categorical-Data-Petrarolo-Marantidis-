@@ -1,0 +1,159 @@
+def drop_rows(df, drop_these_data_rows):
+    """Drops all rows which include one of the values in drop_these_data_rows in any column.
+       outputs then a new edited copy of df.
+
+    Args:
+        df (pd.dataframe): just the dataset
+        drop_these_rows (list): Drops all rows which include the strings which are in this list.
+    """
+    _df = df.copy()
+
+    row_amount_before = len(_df)
+
+    for column_name in _df.columns:
+        mask = _df[column_name].isin(drop_these_data_rows)
+        _df = _df[mask == False]
+
+    amount_of_rows_deleted = row_amount_before - len(_df)
+
+    _df = _df.reset_index(drop=True)
+
+    print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie.{(1- amount_of_rows_deleted/row_amount_before)*100}% still remain ")
+
+    return _df
+
+
+
+
+####################################
+def One_Hot_Encoder(df,column_to_be_encoded,number_if_True = 1, number_if_False = 0, delete_old_column = False,  drop_these_data_rows = [] ):
+    """takes a pandas dataframe and columns which need to be encoded and creates new column according to the columns categories.
+       The rows then get marked wether the row has or has not the column property. 
+       outputs then a new edited copy of df.
+
+    Args:
+        df (pd.dataframe): just the dataset
+        column_to_be_encoded (list): a list of column names form df which need to be encoded
+        number_if_True (int, optional): number if the column property applies to the row. Defaults to 1.
+        number_if_False (int, optional): number if the column property does not apply to the row. Defaults to 0.
+        delete_old_column (bool, optional): Wether the columns form column_to_be_encoded are deleted or not. Defaults to False.
+        drop_these_data_rows (list, optional): Drops all rows which include the strings which are in this list. Defaults to empty list.
+    """
+    _df = df.copy()
+
+    #row_amount_before = len(_df) # Optional if you want to print
+
+    if drop_these_data_rows !=[]:
+        for column_name in column_to_be_encoded:
+            _df = _df[~_df[column_name].isin( drop_these_data_rows)]
+
+    #amount_of_rows_deleted = row_amount_before - len(_df) # Optional if you want to print
+
+    _df = _df.reset_index(drop=True)
+
+    row_amount = len(_df)
+    
+    for i,column_name in enumerate(column_to_be_encoded):
+        list_of_categories = [] #for each column we have a list of categories
+        
+        for j in range(row_amount):
+            
+            category =_df[column_name][j] #what string does this row have in the column we look at
+            
+            if category in list_of_categories:
+                new_column_name = column_name +"_"+ category
+                _df.loc[j, new_column_name] = number_if_True
+                
+            if category not in list_of_categories:
+                
+                list_of_categories.append(category)
+
+                new_column_name = column_name +"_"+ category
+                _df[new_column_name] = number_if_False  #add new column
+                
+                _df.loc[j, new_column_name] = number_if_True
+                
+            if j== row_amount-1: #delete old column if neccessary
+                if delete_old_column:
+                    _df = _df.drop(columns=[column_name])
+    
+    #print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie. {(1- amount_of_rows_deleted/row_amount_before)*100}% still remain ")     # Optional if you want to print        
+    return _df
+
+
+
+
+##############################################
+def Ordinal_Encoder(df,column_to_be_encoded, cols_to_order = [], categories_order =[[]], starting_numbers = None, step_sizes= None, drop_unknown_data_rows = [] ):
+    """takes a pandas dataframe and columns which need to be encoded and creates transforms the columns accordingly to the other inputs. 
+       outputs then a new edited copy of df.
+
+    Args:
+        df (pd.dataframe): just the dataset
+        cols_to_order (list): a list of column names from df which need to be encoded
+        categories_order (list of list): the length of the outer list is the same as cols_to_order, the inner list give the categories AND the order of these categories MUST be INCREASING. if a category is given as a list list itself, fe [cat1,cat2] they will be set equal
+        starting_numbers (list of doubles, optional): list of numbers with the same length as cols_to_order, each number corresponds to the first entry of each inner list of categories_order. Defaults to starting each order with 1
+        step_sizes (list of doubles, optional): list of numbers with the same length as cols_to_order, each number corresponds to the step size of each inner list of categories_order. Defaults to step size 1
+        drop_unknown_data_rows (list, optional): Drops all rows which include the strings which are in this list. Defaults to empty list.
+    """
+    _df = df.copy()
+
+    #row_amount_before = len(_df)
+
+    if type(column_to_be_encoded) == str:
+        column_to_be_encoded = [column_to_be_encoded]
+
+    if cols_to_order == []:
+        cols_to_order = column_to_be_encoded
+
+    if drop_unknown_data_rows !=[]:
+        for column_name in cols_to_order:
+            mask = _df[column_name].isin(drop_unknown_data_rows)
+            _df = _df[mask == False]
+
+    #amount_of_rows_deleted = row_amount_before - len(_df)
+
+    _df = _df.reset_index(drop=True)
+
+    #row_amount = len(_df)
+
+    if starting_numbers is None:
+        starting_numbers = [1 for _ in range(len(cols_to_order))]
+
+    if step_sizes is None:
+        step_sizes = [1 for _ in range(len(cols_to_order))]
+        
+    #handle errors here
+    if len(cols_to_order) != len(categories_order):
+        raise ValueError("len(cols_to_order) must be equal to len(categories_order)")
+
+    if len(cols_to_order) != len(starting_numbers):
+        raise ValueError("len(cols_to_order) must be equal to len(starting_numbers)")
+
+    if len(cols_to_order)!= len(step_sizes):
+        raise ValueError("len(cols_to_order) must be equal to len(step_sizes)")
+
+    for i in range(len(cols_to_order)):
+        column_name = cols_to_order[i]
+        current_number = starting_numbers[i]
+        replacement_dict = {}
+
+        for category_or_list in categories_order[i]:
+            if type(category_or_list) == list:
+                for category in category_or_list:
+                    replacement_dict[category] = current_number
+            else:
+                replacement_dict[category_or_list] = current_number
+
+            current_number = current_number +step_sizes[i]
+
+        old_column = _df[column_name].copy( )
+        _df[column_name]= old_column.map(replacement_dict)
+
+        if _df[column_name].isna().any():
+            categories_not_in_order = list(old_column[_df[column_name].isna()].unique())
+            raise ValueError(f"these categories from column '{column_name}' were not found in categories_order: {categories_not_in_order}")
+
+    #print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie.{100*row_amount/row_amount_before}% still remain")
+
+    return _df
