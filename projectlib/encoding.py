@@ -98,7 +98,7 @@ def Ordinal_Encoder(df,column_to_be_encoded, cols_to_order = [], categories_orde
     """
     _df = df.copy()
 
-    #row_amount_before = len(_df)
+    #row_amount_before = len(_df) # Optional if you want to print 
 
     if type(column_to_be_encoded) == str:
         column_to_be_encoded = [column_to_be_encoded]
@@ -111,11 +111,11 @@ def Ordinal_Encoder(df,column_to_be_encoded, cols_to_order = [], categories_orde
             mask = _df[column_name].isin(drop_unknown_data_rows)
             _df = _df[mask == False]
 
-    #amount_of_rows_deleted = row_amount_before - len(_df)
+    #amount_of_rows_deleted = row_amount_before - len(_df)  # Optional if you want to print 
 
     _df = _df.reset_index(drop=True)
 
-    #row_amount = len(_df)
+    #row_amount = len(_df)  # Optional if you want to print 
 
     if starting_numbers is None:
         starting_numbers = [1 for _ in range(len(cols_to_order))]
@@ -154,7 +154,7 @@ def Ordinal_Encoder(df,column_to_be_encoded, cols_to_order = [], categories_orde
             categories_not_in_order = list(old_column[_df[column_name].isna()].unique())
             raise ValueError(f"these categories from column '{column_name}' were not found in categories_order: {categories_not_in_order}")
 
-    #print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie.{100*row_amount/row_amount_before}% still remain")
+    #print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie.{100*row_amount/row_amount_before}% still remain")  # Optional if you want to print 
 
     return _df
 
@@ -176,13 +176,13 @@ def Frequency_Encoder(df,column_to_be_encoded, delete_old_column = False, drop_u
     """
     _df = df.copy()
 
-    #row_amount_before = len(_df)
+    #row_amount_before = len(_df)  # Optional if you want to print 
 
     if drop_unknown_data_rows !=[]:
         for column_name in column_to_be_encoded:
             _df = _df[~_df[column_name].isin(drop_unknown_data_rows)]
 
-    #amount_of_rows_deleted = row_amount_before - len(_df)
+    #amount_of_rows_deleted = row_amount_before - len(_df)  # Optional if you want to print 
 
     _df = _df.reset_index(drop=True)
 
@@ -201,5 +201,53 @@ def Frequency_Encoder(df,column_to_be_encoded, delete_old_column = False, drop_u
     if delete_old_column:
         _df = _df.drop(columns=column_to_be_encoded)
         
-    #print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie.{(1- amount_of_rows_deleted/row_amount_before)*100}% still remain ")            
+    #print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie.{(1- amount_of_rows_deleted/row_amount_before)*100}% still remain ")  # Optional if you want to print           
+    return _df
+
+
+
+
+
+
+
+
+
+############
+
+def Target_Encoder(df,column_to_be_encoded,target_column_name, delete_old_column = False, drop_unknown_data_rows = [] ):
+    """takes a pandas dataframe and columns which need to be encoded and creates new column called "{oldcolumnname}_target".
+       The new column has then the target representation
+       outputs then a new edited copy of df.
+
+    Args:
+        df (pd.dataframe): just the dataset
+        column_to_be_encoded (list): a list of column names form df which need to be encoded
+        target_column_name (str): the column name of the target variable
+        delete_old_column (bool, optional): Wether the columns form column_to_be_encoded are deleted or not. Defaults to False.
+        drop_unknown_data_rows (list, optional): Drops all rows which include the strings which are in this list. Defaults to empty list.
+    """
+    _df = df.copy()
+    #row_amount_before = len(_df) # Optional if you want to print 
+
+    if type(column_to_be_encoded) == str:
+        column_to_be_encoded = [column_to_be_encoded]
+
+    if drop_unknown_data_rows !=[]:
+        for column_name in column_to_be_encoded:
+            _df = _df[~_df[column_name].isin(drop_unknown_data_rows)]
+
+    #amount_of_rows_deleted = row_amount_before - len(_df) # Optional if you want to print 
+
+    _df = _df.reset_index(drop=True)
+    for i,column_name in enumerate(column_to_be_encoded):
+        
+        new_column_name = f"{column_name}_target"
+        counting_dataframe = _df.groupby(column_name)[target_column_name].mean().to_frame().T.reset_index(drop=True) # gives me every catgory and their respective target mean with col names of the categories and the 0-th line their respective target mean
+        
+        _df[new_column_name] = _df[column_name].map(counting_dataframe.loc[0])
+        
+    if delete_old_column:
+        _df = _df.drop(columns=column_to_be_encoded)
+        
+    #print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie. {(1- amount_of_rows_deleted/row_amount_before)*100}% still remain ")  # Optional if you want to print           
     return _df
