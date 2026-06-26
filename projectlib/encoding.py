@@ -84,16 +84,16 @@ def One_Hot_Encoder(df,column_to_be_encoded,number_if_True = 1, number_if_False 
 
 
 ##############################################
-def Ordinal_Encoder(df,column_to_be_encoded, cols_to_order = [], categories_order =[[]], starting_numbers = None, step_sizes= None, drop_unknown_data_rows = [] ):
+def Ordinal_Encoder(df,column_to_be_encoded, categories_order =[[]], starting_numbers = None, step_sizes= None, drop_unknown_data_rows = [] ):
     """takes a pandas dataframe and columns which need to be encoded and creates transforms the columns accordingly to the other inputs. 
        outputs then a new edited copy of df. Important: the old columns get overridden with the new values (in the copy)
 
     Args:
         df (pd.dataframe): just the dataset
-        cols_to_order (list): a list of column names from df which need to be encoded
-        categories_order (list of list): the length of the outer list is the same as cols_to_order, the inner list give the categories AND the order of these categories MUST be INCREASING. if a category is given as a list list itself, fe [cat1,cat2] they will be set equal
-        starting_numbers (list of doubles, optional): list of numbers with the same length as cols_to_order, each number corresponds to the first entry of each inner list of categories_order. Defaults to starting each order with 1
-        step_sizes (list of doubles, optional): list of numbers with the same length as cols_to_order, each number corresponds to the step size of each inner list of categories_order. Defaults to step size 1
+        column_to_be_encoded (list): a list of column names from df which need to be encoded
+        categories_order (list of list): the length of the outer list is the same as column_to_be_encoded, the inner list give the categories AND the order of these categories MUST be INCREASING. if a category is given as a list list itself, fe [cat1,cat2] they will be set equal
+        starting_numbers (list of doubles, optional): list of numbers with the same length as column_to_be_encoded, each number corresponds to the first entry of each inner list of categories_order. Defaults to starting each order with 1
+        step_sizes (list of doubles, optional): list of numbers with the same length as column_to_be_encoded, each number corresponds to the step size of each inner list of categories_order. Defaults to step size 1
         drop_unknown_data_rows (list, optional): Drops all rows which include the strings which are in this list. Defaults to empty list.
     """
     _df = df.copy()
@@ -103,11 +103,8 @@ def Ordinal_Encoder(df,column_to_be_encoded, cols_to_order = [], categories_orde
     if type(column_to_be_encoded) == str:
         column_to_be_encoded = [column_to_be_encoded]
 
-    if cols_to_order == []:
-        cols_to_order = column_to_be_encoded
-
     if drop_unknown_data_rows !=[]:
-        for column_name in cols_to_order:
+        for column_name in column_to_be_encoded:
             mask = _df[column_name].isin(drop_unknown_data_rows)
             _df = _df[mask == False]
 
@@ -118,23 +115,23 @@ def Ordinal_Encoder(df,column_to_be_encoded, cols_to_order = [], categories_orde
     #row_amount = len(_df)  # Optional if you want to print 
 
     if starting_numbers is None:
-        starting_numbers = [1 for _ in range(len(cols_to_order))]
+        starting_numbers = [1 for _ in range(len(column_to_be_encoded))]
 
     if step_sizes is None:
-        step_sizes = [1 for _ in range(len(cols_to_order))]
+        step_sizes = [1 for _ in range(len(column_to_be_encoded))]
         
     #handle errors here
-    if len(cols_to_order) != len(categories_order):
-        raise ValueError("len(cols_to_order) must be equal to len(categories_order)")
+    if len(column_to_be_encoded) != len(categories_order):
+        raise ValueError("len(column_to_be_encoded) must be equal to len(categories_order)")
 
-    if len(cols_to_order) != len(starting_numbers):
-        raise ValueError("len(cols_to_order) must be equal to len(starting_numbers)")
+    if len(column_to_be_encoded) != len(starting_numbers):
+        raise ValueError("len(column_to_be_encoded) must be equal to len(starting_numbers)")
 
-    if len(cols_to_order)!= len(step_sizes):
-        raise ValueError("len(cols_to_order) must be equal to len(step_sizes)")
+    if len(column_to_be_encoded)!= len(step_sizes):
+        raise ValueError("len(column_to_be_encoded) must be equal to len(step_sizes)")
 
-    for i in range(len(cols_to_order)):
-        column_name = cols_to_order[i]
+    for i in range(len(column_to_be_encoded)):
+        column_name = column_to_be_encoded[i]
         current_number = starting_numbers[i]
         replacement_dict = {}
 
