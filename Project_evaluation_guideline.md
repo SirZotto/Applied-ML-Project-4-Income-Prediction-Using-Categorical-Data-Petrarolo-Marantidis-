@@ -4,7 +4,7 @@ This document outlines the expectations, requirements, and grading criteria for 
 
 ## ✅ General Requirements
 
-### 1. Code Quality
+### 1. CODE Quality
 - Write clean, modular Python code.
 - Structure your code to integrate with the course's `courselib` package.
 - Include a `README.md` with:
