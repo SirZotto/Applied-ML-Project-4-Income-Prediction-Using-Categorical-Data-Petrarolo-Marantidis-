@@ -1,3 +1,6 @@
+import pandas as pd
+import numpy as np
+
 def drop_rows(df, drop_these_data_rows):
     """Drops all rows which include one of the values in drop_these_data_rows in any column.
        outputs then a new edited copy of df.
@@ -21,7 +24,6 @@ def drop_rows(df, drop_these_data_rows):
     print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie.{(1- amount_of_rows_deleted/row_amount_before)*100}% still remain ")
 
     return _df
-
 
 
 
