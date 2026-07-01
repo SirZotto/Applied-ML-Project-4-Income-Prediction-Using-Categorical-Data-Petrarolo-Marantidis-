@@ -43,6 +43,9 @@ def One_Hot_Encoder(df,column_to_be_encoded,number_if_True = 1, number_if_False 
 
     #row_amount_before = len(_df) # Optional if you want to print
 
+    if type(column_to_be_encoded) == str:
+        column_to_be_encoded = [column_to_be_encoded]
+
     if drop_these_data_rows !=[]:
         for column_name in column_to_be_encoded:
             _df = _df[~_df[column_name].isin( drop_these_data_rows)]
@@ -54,28 +57,14 @@ def One_Hot_Encoder(df,column_to_be_encoded,number_if_True = 1, number_if_False 
     row_amount = len(_df)
     
     for i,column_name in enumerate(column_to_be_encoded):
-        list_of_categories = [] #for each column we have a list of categories
+        list_of_categories = list(_df[column_name].unique()) #for each column we have a list of categories
         
-        for j in range(row_amount):
-            
-            category =_df[column_name][j] #what string does this row have in the column we look at
-            
-            if category in list_of_categories:
-                new_column_name = column_name +"_"+ category
-                _df.loc[j, new_column_name] = number_if_True
+        for category in list_of_categories:
+            new_column_name = column_name +"_"+ category
+            _df[new_column_name] = (_df[column_name] == category).map({True: number_if_True, False: number_if_False})
                 
-            if category not in list_of_categories:
-                
-                list_of_categories.append(category)
-
-                new_column_name = column_name +"_"+ category
-                _df[new_column_name] = number_if_False  #add new column
-                
-                _df.loc[j, new_column_name] = number_if_True
-                
-            if j== row_amount-1: #delete old column if neccessary
-                if delete_old_column:
-                    _df = _df.drop(columns=[column_name])
+        if delete_old_column:
+            _df = _df.drop(columns=[column_name])
     
     #print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie. {(1- amount_of_rows_deleted/row_amount_before)*100}% still remain ")     # Optional if you want to print        
     return _df
@@ -242,6 +231,148 @@ def Target_Encoder(df,column_to_be_encoded,target_column_name, delete_old_column
         counting_dataframe = _df.groupby(column_name)[target_column_name].mean().to_frame().T.reset_index(drop=True) # gives me every catgory and their respective target mean with col names of the categories and the 0-th line their respective target mean
         
         _df[new_column_name] = _df[column_name].map(counting_dataframe.loc[0])
+        
+    if delete_old_column:
+        _df = _df.drop(columns=column_to_be_encoded)
+        
+    #print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie. {(1- amount_of_rows_deleted/row_amount_before)*100}% still remain ")  # Optional if you want to print           
+    return _df
+
+def Target_Encoder_LC(df_to_encode,df_for_target_statistics,column_to_be_encoded,target_column_name, delete_old_column = False, drop_unknown_data_rows = [] ):
+    """takes a pandas dataframe and columns which need to be encoded and creates new column called "{oldcolumnname}_target".
+       The new column has then the target representation, but the target statistics are taken from df_for_target_statistics
+       outputs then a new edited copy of df_to_encode.
+       (Basically just a special version of Target_Encoder_LC)
+       
+    Args:
+        df_to_encode (pd.dataframe): just the dataset which needs to be encoded
+        df_for_target_statistics (pd.dataframe): the dataset oh which the data is used to encode for df_to_encode
+        column_to_be_encoded (list): a list of column names form df which need to be encoded
+        target_column_name (str): the column name of the target variable
+        delete_old_column (bool, optional): Wether the columns form column_to_be_encoded are deleted or not. Defaults to False.
+        drop_unknown_data_rows (list, optional): Drops all rows which include the strings which are in this list. Defaults to empty list.
+    """
+    _df_to_encode = df_to_encode.copy()
+    _df_for_target_statistics = df_for_target_statistics.copy()
+
+    if type(column_to_be_encoded) == str:
+        column_to_be_encoded = [column_to_be_encoded]
+
+    if drop_unknown_data_rows !=[]:
+        for column_name in column_to_be_encoded:
+            _df_to_encode = _df_to_encode[~_df_to_encode[column_name].isin(drop_unknown_data_rows)]
+            _df_for_target_statistics = _df_for_target_statistics[~_df_for_target_statistics[column_name].isin(drop_unknown_data_rows)]
+
+    _df_to_encode = _df_to_encode.reset_index(drop=True)
+    _df_for_target_statistics = _df_for_target_statistics.reset_index(drop=True)
+
+    global_target_mean = _df_for_target_statistics[target_column_name].mean()
+
+    for i,column_name in enumerate(column_to_be_encoded):
+        
+        new_column_name = f"{column_name}_target"
+        counting_dataframe = _df_for_target_statistics.groupby(column_name)[target_column_name].mean().to_frame().T.reset_index(drop=True)
+        
+        _df_to_encode[new_column_name] = _df_to_encode[column_name].map(counting_dataframe.loc[0])
+        _df_to_encode[new_column_name] = _df_to_encode[new_column_name].fillna(global_target_mean)
+        
+    if delete_old_column:
+        _df_to_encode = _df_to_encode.drop(columns=column_to_be_encoded)
+        
+    return _df_to_encode
+
+
+
+#######
+
+
+def SmoothTarget_Encoder(df,column_to_be_encoded,target_column_name, alpha = 1.0, delete_old_column = False, drop_unknown_data_rows = [] ):
+    """takes a pandas dataframe and columns which need to be encoded and creates new column called "{oldcolumnname}_smooth_target".
+       The new column has then the smoothed target representation
+       outputs then a new edited copy of df.
+
+    Args:
+        df (pd.dataframe): just the dataset
+        column_to_be_encoded (list): a list of column names form df which need to be encoded
+        target_column_name (str): the column name of the target variable
+        alpha (double, optional): smoothing parameter from the formula. Defaults to 1.0.
+        delete_old_column (bool, optional): Wether the columns form column_to_be_encoded are deleted or not. Defaults to False.
+        drop_unknown_data_rows (list, optional): Drops all rows which include the strings which are in this list. Defaults to empty list.
+    """
+    _df = df.copy()
+    #row_amount_before = len(_df) # Optional if you want to print 
+
+    if type(column_to_be_encoded) == str:
+        column_to_be_encoded = [column_to_be_encoded]
+
+    if drop_unknown_data_rows !=[]:
+        for column_name in column_to_be_encoded:
+            _df = _df[~_df[column_name].isin(drop_unknown_data_rows)]
+
+    #amount_of_rows_deleted = row_amount_before - len(_df) # Optional if you want to print 
+
+    _df = _df.reset_index(drop=True)
+
+    global_target_mean = _df[target_column_name].mean()
+    
+    for i,column_name in enumerate(column_to_be_encoded):
+        
+        new_column_name = f"{column_name}_smooth_target"
+        grouped_dataframe = _df.groupby(column_name)[target_column_name].agg(["mean","count"]) # gives me every catgory and their respective target mean and amount
+        
+        smooth_target_series = (grouped_dataframe["count"] * grouped_dataframe["mean"] + alpha * global_target_mean) / (grouped_dataframe["count"] + alpha)
+        
+        _df[new_column_name] = _df[column_name].map(smooth_target_series)
+        
+    if delete_old_column:
+        _df = _df.drop(columns=column_to_be_encoded)
+        
+    #print(f"{amount_of_rows_deleted} out of {row_amount_before} were deleted, ie. {(1- amount_of_rows_deleted/row_amount_before)*100}% still remain ")  # Optional if you want to print           
+    return _df
+
+
+def SmoothTarget_Encoder_LC(df,df_for_target_statistics,column_to_be_encoded,target_column_name, alpha = 1.0, delete_old_column = False, drop_unknown_data_rows = [] ):
+    """takes a pandas dataframe and a second pandas dataframe from which the target statistics are computed and creates new column called "{oldcolumnname}_smooth_target".
+       The new column has then the smoothed target representation
+       outputs then a new edited copy of df.
+
+    Args:
+        df (pd.dataframe): the dataset which gets encoded
+        df_for_target_statistics (pd.dataframe): the dataset from which the target statistics are computed
+        column_to_be_encoded (list): a list of column names form df which need to be encoded
+        target_column_name (str): the column name of the target variable
+        alpha (double, optional): smoothing parameter from the formula. Defaults to 1.0.
+        delete_old_column (bool, optional): Wether the columns form column_to_be_encoded are deleted or not. Defaults to False.
+        drop_unknown_data_rows (list, optional): Drops all rows which include the strings which are in this list. Defaults to empty list.
+    """
+    _df = df.copy()
+    _df_for_target_statistics = df_for_target_statistics.copy()
+    #row_amount_before = len(_df) # Optional if you want to print 
+
+    if type(column_to_be_encoded) == str:
+        column_to_be_encoded = [column_to_be_encoded]
+
+    if drop_unknown_data_rows !=[]:
+        for column_name in column_to_be_encoded:
+            _df = _df[~_df[column_name].isin(drop_unknown_data_rows)]
+            _df_for_target_statistics = _df_for_target_statistics[~_df_for_target_statistics[column_name].isin(drop_unknown_data_rows)]
+
+    #amount_of_rows_deleted = row_amount_before - len(_df) # Optional if you want to print 
+
+    _df = _df.reset_index(drop=True)
+    _df_for_target_statistics = _df_for_target_statistics.reset_index(drop=True)
+
+    global_target_mean = _df_for_target_statistics[target_column_name].mean()
+    
+    for i,column_name in enumerate(column_to_be_encoded):
+        
+        new_column_name = f"{column_name}_smooth_target"
+        grouped_dataframe = _df_for_target_statistics.groupby(column_name)[target_column_name].agg(["mean","count"]) # gives me every catgory and their respective target mean and amount
+        
+        smooth_target_series = (grouped_dataframe["count"] * grouped_dataframe["mean"] + alpha * global_target_mean) / (grouped_dataframe["count"] + alpha)
+        
+        _df[new_column_name] = _df[column_name].map(smooth_target_series)
+        _df[new_column_name] = _df[new_column_name].fillna(global_target_mean)
         
     if delete_old_column:
         _df = _df.drop(columns=column_to_be_encoded)

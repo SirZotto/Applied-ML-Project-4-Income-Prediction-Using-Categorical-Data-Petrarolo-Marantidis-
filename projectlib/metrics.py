@@ -20,7 +20,7 @@ def binary_precision(y_pred,y_true, threshold=0.5, labels = [1,0]):
     
     return TP / (TP + FP)
 
-# recall formula is given by: TP / ( TP + FP) 
+# recall formula is given by: TP / ( TP + FN) 
 def binary_recall(y_pred,y_true, threshold=0.5, labels = [1,0]):
     """Recall function for binary classification models it follows the formula TP / (TP + FN) where 
         TP = true positives
